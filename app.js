@@ -33,5 +33,8 @@ http.createServer(function (req, res) {
     client.on('end', function() {
       res.end(');');
     });
+    client.on('error', function(exception) {
+      res.trigger('error', exception);
+    });
   }
 }).listen(process.env.PORT || 3000, '127.0.0.1');
