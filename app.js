@@ -1,6 +1,31 @@
 var http = require('http'),
     parse = require('url').parse,
-    request = require('request');
+    request = require('request'),
+    zlib = require('zlib');
+
+function handleClientResponse(req, res, callback) {
+  return function(rec) {
+    var client;
+
+    res.setHeader('Content-Type', 'text/javascript');
+    res.write(callback + '(');
+    switch (rec.headers['content-encoding']) {
+      case 'gzip':
+        client = rec.pipe(zlib.createGunzip());
+        break;
+      case 'deflate':
+        client = rec.pipe(zlib.createDeflate());
+        break;
+      default:
+        client = rec;
+        break;
+    }
+    client.on('end', function() {
+      res.end(')');
+    });
+    client.pipe(res, {end: false});
+  };
+}
 
 http.createServer(function (req, res) {
   var callback, client, target;
@@ -18,23 +43,11 @@ http.createServer(function (req, res) {
     callback = url.query.callback;
   }
 
-  client = req.pipe(request(target));
   if (!callback) {
-    client.pipe(res);
+    req.pipe(request(target)).pipe(res);
   } else {
-    res.setHeader('Content-Type', 'text/javascript');
-    client.once('data', function(chunk) {
-      res.write(callback + '(');
-      res.write(chunk);
-      client.on('data', function(chunk) {
-        res.write(chunk);
-      });
-    });
-    client.on('end', function() {
-      res.end(');');
-    });
-    client.on('error', function(exception) {
-      res.trigger('error', exception);
-    });
+    target = parse(target);
+    target.headers = req.headers;
+    req.pipe(require(target.protocol.replace(':', '')).request(target, handleClientResponse(req, res, callback)));
   }
 }).listen(process.env.PORT || 3000, '127.0.0.1');
