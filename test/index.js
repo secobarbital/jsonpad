@@ -90,20 +90,31 @@ describe('jsonp', function() {
         should.not.exist(err);
         res.should.have.status(200);
         res.should.have.header('content-type', 'text/javascript');
-        body.should.match(/console\.log\((.*)\)/);
+        body.match(/console\.log\((.*)\)/)[1].should.equal(json);
         done();
       });
     });
 
     it('should support gzip', function(done) {
       var url = base + '/' + encodeURIComponent(tase) + '?callback=console.log',
-          options = {headers: {'accept-encoding': 'gzip'}};
+          options = {headers: {'accept-encoding': 'gzip'}},
+          req = request(url, options),
+          unzipped = req.pipe(zlib.createGunzip()),
+          chunks = [];
 
-      request(url, options, function(err, res, body) {
-        should.not.exist(err);
-        res.should.have.status(200);
+      req.on('response', function(res) {
         res.should.have.header('content-type', 'text/javascript');
-        body.should.match(/console\.log\((.*)\)/);
+        res.should.have.header('content-encoding', 'gzip');
+        res.should.have.status(200);
+      });
+
+      unzipped.on('data', function(chunk) {
+        chunks.push(chunk);
+      });
+
+      unzipped.on('end', function() {
+        var body = Buffer.concat(chunks).toString();
+        body.match(/console\.log\((.*)\)/)[1].should.equal(json);
         done();
       });
     });
