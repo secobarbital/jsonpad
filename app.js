@@ -1,7 +1,7 @@
 var http = require('http'),
     parse = require('url').parse,
     request = require('request'),
-    StreamFilter = require('./lib/streamfilter').StreamFilter;
+    StreamJsonP = require('./lib/streamjsonp').StreamJsonP;
 
 var app = module.exports = http.createServer(function(req, res) {
   var callback, rec, target, url;
@@ -20,10 +20,10 @@ var app = module.exports = http.createServer(function(req, res) {
   }
 
   rec = req.pipe(request(target));
-  if (!callback) {
-    rec.pipe(res);
+  if (callback) {
+    rec.pipe(new StreamJsonP(callback)).pipe(res);
   } else {
-    rec.pipe(new StreamFilter(callback)).pipe(res);
+    rec.pipe(res);
   }
 });
 
