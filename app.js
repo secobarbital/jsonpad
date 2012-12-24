@@ -19,7 +19,7 @@ var app = module.exports = http.createServer(function(req, res) {
 
   url = parse(req.url, true);
 
-  if (url.query) {
+  if (url.query && Object.keys(url.query).length) {
     target = url.query.url;
     callback = url.query.callback;
   } else {

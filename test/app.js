@@ -47,6 +47,16 @@ describe('jsonp', function() {
     });
   });
 
+  it('should render the homepage when there is no query', function(done) {
+    request(base, function(err, res, body) {
+      should.not.exist(err);
+      res.should.have.status(200);
+      res.should.have.header('content-type', 'text/html');
+      body.indexOf('<html>').should.be.above(-1);
+      done();
+    });
+  });
+
   it('should support plain json', function(done) {
     request(base + '/?url=' + encodeURIComponent(tase) + '&callback=console.log', function(err, res, body) {
       should.not.exist(err);
