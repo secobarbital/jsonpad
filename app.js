@@ -1,29 +1,47 @@
 var http = require('http'),
+    fs = require('fs'),
     parse = require('url').parse,
-    request = require('request'),
-    StreamJsonP = require('./lib/streamjsonp').StreamJsonP;
+    request = require('request');
+
+var StreamJsonP = require('./lib/streamjsonp').StreamJsonP;
 
 var app = module.exports = http.createServer(function(req, res) {
-  var callback, rec, target, url;
+  function handleError(err, statusCode) {
+    res.writeHead(statusCode || 500);
+    res.end(err.toString());
+  }
+
+  var callback, client, padder, target, url;
+
+  if ('GET' !== req.method) {
+    return handleError('Come GET me', 405);
+  }
 
   url = parse(req.url, true);
-  target = decodeURIComponent(url.pathname.substring(1));
 
-  if (target.indexOf('http')) {
-    res.writeHead(404);
-    res.end();
+  if (url.query) {
+    target = url.query.url;
+    callback = url.query.callback;
+  } else {
+    res.setHeader('Content-Type', 'text/html');
+    fs.createReadStream('index.html').pipe(res);
     return;
   }
 
-  if (url.query) {
-    callback = url.query.callback;
+  if (!callback || !target || target.toLowerCase().indexOf('http')) {
+    return handleError('Give me a url and a callback', 400);
   }
 
-  rec = req.pipe(request(target));
-  if (callback) {
-    rec.pipe(new StreamJsonP(callback)).pipe(res);
-  } else {
-    rec.pipe(res);
+  try {
+    client = request(target);
+    padder = new StreamJsonP(callback);
+
+    client.on('error', handleError);
+    padder.on('error', handleError);
+
+    req.pipe(client).pipe(padder).pipe(res);
+  } catch(err) {
+    return handleError(err, 400);
   }
 });
 
