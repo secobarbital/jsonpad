@@ -1,9 +1,10 @@
 {
-  "name": "jsonp.io",
-  "version": "0.0.1",
+  "name": "jsonpad",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node app"
+    "start": "node app",
+    "test": "mocha"
   },
   "dependencies": {
     "request": "2.12.0"
